@@ -4,6 +4,8 @@ Kernel memory inspection tool for embedded MIPS Linux. Zero dependencies — raw
 
 Built for routers and IoT devices where there's no toolchain, no gdb, no `/proc/slabinfo`, and the filesystem is read-only squashfs. Upload it, run it, poke the kernel.
 
+![kpoked](kpoked.png)
+
 ## Two binaries
 
 | Binary | Size | Description |
