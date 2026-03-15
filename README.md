@@ -20,7 +20,6 @@ slab <cache_addr>             Pretty-print struct kmem_cache (SLAB allocator)
 pages <cache_addr>            Dump all slab objects with 2-dword fingerprints
 write <addr> <val> [count]    Write dword(s) to kernel memory
 flush <addr> <nbytes>         Flush I+D cache (required after writing code)
-<addr> [count]                Legacy shorthand for read
 ```
 
 All addresses accept kseg0 (`0x8xxxxxxx`) and auto-convert to physical for `/dev/mem`. Creates `/var/tmp/devmem` as a char device if `/dev/mem` isn't available.

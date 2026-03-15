@@ -9,7 +9,6 @@
 
 /* ============================================================
  * CMD: read <addr> [count]
- * Also: kpoke <addr> [count]  (legacy)
  * ============================================================ */
 cmd_read_named:
     /* argv[2] = addr, argv[3] = count */
@@ -31,21 +30,6 @@ cmd_read_named:
     move    $s4, $v0
     j       .read_go
     nop
-
-cmd_read_legacy:
-    lw      $a0, 4($s6)         /* argv[1] = addr */
-    jal     parse_hex
-    nop
-    move    $s0, $v0
-
-    li      $s4, 4              /* default count */
-    slti    $v0, $s3, 3
-    bnez    $v0, .read_go
-    nop
-    lw      $a0, 8($s6)         /* argv[2] = count */
-    jal     parse_dec
-    nop
-    move    $s4, $v0
 
 .read_go:
     jal     devmem_open
@@ -1085,7 +1069,7 @@ walk_sep:       .ascii ": "
 walk_sep_end:
 walk_total:     .ascii "total: "
 walk_total_end:
-usage_msg:      .ascii "Usage:\n  kpoke read <addr> [count]\n  kpoke walk <list_head> <offset> [max]\n  kpoke slab <cache_addr>\n  kpoke pages <cache_addr>\n  kpoke write <addr> <val> [count]\n  kpoke flush <addr> <nbytes>\n  kpoke <addr> [count]\n"
+usage_msg:      .ascii "Usage:\n  kpoke read <addr> [count]\n  kpoke walk <list_head> <offset> [max]\n  kpoke slab <cache_addr>\n  kpoke pages <cache_addr>\n  kpoke write <addr> <val> [count]\n  kpoke flush <addr> <nbytes>\n"
 usage_msg_end:
 usage_walk_msg: .ascii "Usage: kpoke walk <list_head_addr> <entry_offset> [max]\n"
 usage_walk_msg_end:

@@ -80,8 +80,8 @@ __start:
     DISPATCH dump,   cmd_dump
     DISPATCH string, cmd_string
 
-    /* Default: treat argv[1] as hex address (legacy mode) */
-    j       cmd_read_legacy
+    /* Unknown command */
+    j       usage
     nop
 
 #include "common.inc"

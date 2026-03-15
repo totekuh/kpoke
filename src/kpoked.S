@@ -327,8 +327,9 @@ _cmd_loop:
     DISPATCH dump,   cmd_dump
     DISPATCH string, cmd_string
 
-    /* Unknown command — try as hex address (legacy) */
-    j       cmd_read_legacy
+    /* Unknown command */
+    EPRINT d_unknown_msg
+    j       exit_err
     nop
 
 .d_child_exit:
@@ -393,6 +394,8 @@ d_err_socket_msg: .ascii "Error: socket() failed\n"
 d_err_socket_msg_end:
 d_err_bind_msg:   .ascii "Error: bind() failed\n"
 d_err_bind_msg_end:
+d_unknown_msg:    .ascii "Error: unknown command\n"
+d_unknown_msg_end:
 
     .bss
 d_linebuf:  .space LINEBUF_SIZE
