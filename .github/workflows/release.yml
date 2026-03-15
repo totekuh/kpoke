@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build kpoke
+        run: |
+          mkdir -p dist
+          docker run --rm -v "$PWD:/work" -w /work dockcross/linux-mipsel-lts \
+            mipsel-unknown-linux-gnu-gcc -nostdlib -static -Wl,-e,__start -Isrc \
+            -o dist/kpoke src/kpoke.S
+          file dist/kpoke
+
+      - name: Build kpoked
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work dockcross/linux-mipsel-lts \
+            mipsel-unknown-linux-gnu-gcc -nostdlib -static -Wl,-e,__start -Isrc \
+            -o dist/kpoked src/kpoked.S
+          file dist/kpoked
+
+      - name: Strip binaries
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work dockcross/linux-mipsel-lts \
+            mipsel-unknown-linux-gnu-strip --strip-all dist/kpoke dist/kpoked
+          echo "kpoke:  $(stat -c%s dist/kpoke) bytes"
+          echo "kpoked: $(stat -c%s dist/kpoked) bytes"
+
+      - name: Create source archive
+        run: |
+          git archive --format=tar.gz --prefix=kpoke-${GITHUB_REF_NAME}/ HEAD \
+            -o dist/kpoke-${GITHUB_REF_NAME}-src.tar.gz
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: false
+          body: |
+            ## kpoke ${{ github.ref_name }}
+
+            Kernel memory inspection tool for embedded MIPS Linux. Raw syscalls, no libc.
+
+            ### Binaries (MIPS32 little-endian, static, stripped)
+
+            | File | Description |
+            |------|-------------|
+            | `kpoke` | Standalone CLI — one command per invocation |
+            | `kpoked` | TCP daemon — interactive sessions over the network |
+
+            ### Quick start
+
+            ```bash
+            # Upload to target
+            curl -o /var/tmp/kpoke http://<your-ip>:8888/kpoke && chmod +x /var/tmp/kpoke
+
+            # Read kernel memory
+            kpoke read 0x80000000 8
+
+            # Or run the daemon for remote access
+            kpoked 4446 &
+            echo "read 0x80000000 4" | nc <target-ip> 4446
+            ```
+
+            ### Commands
+
+            ```
+            read <addr> [count]           Read dwords from kernel memory
+            walk <list_head> <off> [max]  Walk Linux list_head linked list
+            slab <cache_addr>             Pretty-print struct kmem_cache (SLAB)
+            pages <cache_addr>            Dump slab objects with fingerprints
+            write <addr> <val> [count]    Write dword(s) to kernel memory
+            flush <addr> <nbytes>         Flush I+D cache after code writes
+            ```
+
+            ### Target platforms
+
+            MIPS32 LE (MT7628, MT7621, etc.). Linux 2.6.36+. `slab`/`pages` require SLAB allocator with NR_CPUS=1; all other commands work on any kernel with `/dev/mem`.
+          files: |
+            dist/kpoke
+            dist/kpoked
+            dist/kpoke-${{ github.ref_name }}-src.tar.gz
