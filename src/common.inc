@@ -668,15 +668,13 @@ cmd_flush:
     nop
 
     PRINT flush_ok_msg
-    li      $a0, 0
-    li      $v0, __NR_exit
-    syscall
+    j       exit_ok
+    nop
 
 .flush_err:
     EPRINT flush_err_msg
-    li      $a0, 1
-    li      $v0, __NR_exit
-    syscall
+    j       exit_err
+    nop
 
 /* ============================================================
  * CMD: find (TODO)
@@ -685,9 +683,8 @@ cmd_find:
 cmd_dump:
 cmd_string:
     EPRINT todo_msg
-    li      $a0, 0
-    li      $v0, __NR_exit
-    syscall
+    j       exit_err
+    nop
 
 /* ============================================================
  * SHARED: str_match(a, b)
@@ -1019,9 +1016,14 @@ exit_ok:
     move    $a0, $s1
     li      $v0, __NR_close
     syscall
+#ifdef DAEMON_MODE
+    j       _cmd_loop
+    nop
+#else
     li      $a0, 0
     li      $v0, __NR_exit
     syscall
+#endif
 
 usage:
     EPRINT usage_msg
@@ -1042,9 +1044,14 @@ err_seek:
     EPRINT seek_err_msg
 
 exit_err:
+#ifdef DAEMON_MODE
+    j       _cmd_loop
+    nop
+#else
     li      $a0, 1
     li      $v0, __NR_exit
     syscall
+#endif
 
 /* ============================================================
  * Data

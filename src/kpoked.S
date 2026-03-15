@@ -4,12 +4,13 @@
  * Usage: kpoked <port>
  *
  * Listens on TCP port, accepts connections, reads commands line-by-line.
- * Each connection is fork()'d — child handles one command and exits.
+ * Each connection is fork()'d — child runs an interactive command loop.
  * Output goes directly to the socket via dup2().
  */
 
 #include <sys/syscall.h>
 
+#define DAEMON_MODE 1
 #define SEEK_SET 0
 #define O_RDONLY 0
 #define O_RDWR   2
@@ -198,29 +199,46 @@ __start:
     li      $v0, __NR_close
     syscall
 
-    /* Read command line from stdin */
+    /* ===== Interactive command loop ===== */
+_cmd_loop:
+    /* Reset stack pointer to a safe base for each command */
+    la      $sp, d_stack_top
+
+    /* Read one line from stdin (byte at a time until \n) */
     la      $s4, d_linebuf
+    move    $s5, $zero          /* s5 = offset into buffer */
+
+.d_read_byte:
+    slti    $v0, $s5, LINEBUF_SIZE - 1
+    beqz    $v0, .d_line_ready  /* buffer full */
+    nop
     li      $a0, 0              /* fd = stdin */
-    move    $a1, $s4            /* buf */
-    li      $a2, LINEBUF_SIZE - 1
+    addu    $a1, $s4, $s5       /* buf + offset */
+    li      $a2, 1              /* read 1 byte */
     li      $v0, __NR_read
     syscall
-    blez    $v0, .d_child_exit  /* EOF or error */
+    blez    $v0, .d_child_exit  /* EOF or error — client disconnected */
     nop
-    move    $s5, $v0            /* s5 = bytes read */
-
-    /* Null-terminate and strip trailing \r\n */
     addu    $t0, $s4, $s5
-    sb      $zero, 0($t0)       /* null terminate */
+    lbu     $t1, 0($t0)
+    li      $t2, '\n'
+    beq     $t1, $t2, .d_line_ready
+    nop
+    addiu   $s5, $s5, 1
+    j       .d_read_byte
+    nop
+
+.d_line_ready:
+    /* Null-terminate, strip trailing \r\n */
+    addu    $t0, $s4, $s5
+    sb      $zero, 0($t0)
+
 .d_strip_tail:
     addiu   $t0, $t0, -1
     sltu    $t1, $t0, $s4
-    bnez    $t1, .d_child_exit  /* empty line */
+    bnez    $t1, _cmd_loop      /* empty line — just loop */
     nop
     lbu     $t1, 0($t0)
-    li      $t2, '\n'
-    beq     $t1, $t2, .d_strip_char
-    nop
     li      $t2, '\r'
     beq     $t1, $t2, .d_strip_char
     nop
@@ -294,7 +312,7 @@ __start:
 .d_tok_done:
     /* s3 = argc, s6 = argv — dispatch */
     slti    $v0, $s3, 2
-    bnez    $v0, .d_child_exit  /* no command */
+    bnez    $v0, _cmd_loop      /* no command — just loop */
     nop
 
     DISPATCH read,   cmd_read_named
@@ -372,6 +390,8 @@ d_err_bind_msg_end:
     .bss
 d_linebuf:  .space LINEBUF_SIZE
 d_argv:     .space (MAX_ARGC * 4)
+            .space 4096         /* child stack */
+d_stack_top:
 
 /* Include shared commands, helpers, and data */
     .text
