@@ -165,7 +165,8 @@ __start:
     /* fork() */
     li      $v0, __NR_fork
     syscall
-
+    bltz    $v0, .d_fork_failed /* fork error: close client, retry */
+    nop
     bnez    $v0, .d_parent
     nop
 
@@ -203,6 +204,7 @@ __start:
 _cmd_loop:
     /* Reset stack pointer to a safe base for each command */
     la      $sp, d_stack_top
+    li      $s1, -1             /* invalidate devmem fd so stale close is harmless */
 
     /* Read one line from stdin (byte at a time until \n) */
     la      $s4, d_linebuf
@@ -335,18 +337,23 @@ _cmd_loop:
     syscall
 
     /* ===== PARENT PROCESS ===== */
+.d_fork_failed:
 .d_parent:
     /* Close client fd in parent */
     move    $a0, $s1
     li      $v0, __NR_close
     syscall
 
-    /* waitpid(-1, NULL, WNOHANG) to reap zombies */
+    /* Reap all finished children */
+.d_reap:
     li      $a0, -1
     li      $a1, 0
     li      $a2, 1              /* WNOHANG */
-    li      $v0, __NR_waitpid
+    li      $a3, 0              /* rusage = NULL */
+    li      $v0, __NR_wait4
     syscall
+    bgtz    $v0, .d_reap
+    nop
 
     j       .d_accept_loop
     nop

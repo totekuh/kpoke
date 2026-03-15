@@ -1045,6 +1045,10 @@ err_seek:
 
 exit_err:
 #ifdef DAEMON_MODE
+    /* Close devmem fd if open ($s1 = -1 if not) */
+    move    $a0, $s1
+    li      $v0, __NR_close
+    syscall
     j       _cmd_loop
     nop
 #else
