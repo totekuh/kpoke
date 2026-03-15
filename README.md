@@ -36,18 +36,11 @@ make help       # show all targets
 
 First time? Run `make setup` to pull the dockcross image, or `make setup-local` to install the apt cross-compiler.
 
-## Deploy
+## Usage
 
-```bash
-# Serve the binaries over HTTP
-./serve.sh
+Upload the binaries to a MIPS32 LE target and run from there.
 
-# On the target device:
-curl -o /var/tmp/kpoke http://<your-ip>:8888/kpoke && chmod +x /var/tmp/kpoke
-curl -o /var/tmp/kpoked http://<your-ip>:8888/kpoked && chmod +x /var/tmp/kpoked
-```
-
-## Usage — standalone CLI
+### Standalone CLI
 
 ```bash
 kpoke read 0x83dbe400 16
@@ -58,7 +51,7 @@ kpoke write 0x83dbe40c 0xdeadbeef
 kpoke flush 0x83dbe400 256
 ```
 
-## Usage — TCP daemon
+### TCP daemon
 
 ```bash
 # On the target:
